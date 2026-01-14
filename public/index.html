@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DockWatch - Docker容器镜像更新检查</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>DockWatch</h1>
+        <p class="subtitle">Docker容器镜像更新检查服务</p>
+        
+        <div class="controls">
+            <button id="checkBtn" class="btn-primary">开始检查</button>
+            <span id="status" class="status"></span>
+        </div>
+        
+        <div id="infoBox" class="info-box">
+            <h3>检查日志</h3>
+            <div id="log" class="log-content"></div>
+        </div>
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>检查结果</h3>
+            <div class="summary">
+                <p>共检查 <span id="totalContainers">0</span> 个容器，其中 <span id="containersWithUpdates">0</span> 个容器有可用更新。</p>
+            </div>
+            
+            <h4>需要更新的容器：</h4>
+            <div id="updatesList" class="updates-list"></div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
