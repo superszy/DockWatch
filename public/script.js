@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalContainers = document.getElementById('totalContainers');
     const containersWithUpdates = document.getElementById('containersWithUpdates');
     const updatesList = document.getElementById('updatesList');
+    const copySuccess = document.getElementById('copySuccess');
+    
+    // SSE连接对象
+    let eventSource;
     
     // 添加日志记录
     function addLog(message, type = 'info') {
@@ -25,6 +29,46 @@ document.addEventListener('DOMContentLoaded', function() {
     function clearResults() {
         updatesList.innerHTML = '';
         results.style.display = 'none';
+    }
+    
+    // 显示复制成功提示
+    function showCopySuccess() {
+        // 显示提示
+        copySuccess.classList.add('show');
+        
+        // 2秒后隐藏提示
+        setTimeout(() => {
+            copySuccess.classList.remove('show');
+        }, 2000);
+    }
+    
+    // 初始化SSE连接
+    function initSSE() {
+        // 关闭现有的连接（如果有）
+        if (eventSource) {
+            eventSource.close();
+        }
+        
+        // 创建新的SSE连接
+        eventSource = new EventSource('/api/logs');
+        
+        // 监听消息事件
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                addLog(data.message);
+            } catch (error) {
+                console.error('解析日志消息失败:', error);
+            }
+        };
+        
+        // 监听错误事件
+        eventSource.onerror = function(error) {
+            console.error('SSE连接错误:', error);
+            addLog('日志连接中断，正在尝试重新连接...', 'error');
+            // 尝试重新连接
+            setTimeout(initSSE, 3000);
+        };
     }
     
     // 检查按钮点击事件
@@ -47,8 +91,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!data.success) {
                 throw new Error(data.error || '检查失败');
             }
-            
-            addLog(`共发现 ${data.totalContainers} 个容器`, 'success');
             
             // 更新状态和统计信息
             status.textContent = '检查完成';
@@ -73,18 +115,97 @@ document.addEventListener('DOMContentLoaded', function() {
                             updateInfoContent += `<p class="warning">⚠️ 无法获取远程镜像Digest，更新状态可能不准确</p>`;
                         }
                         
-                        containerCard.innerHTML = `
+                        // 添加复制功能的辅助函数
+                        function addCopyFunctionality(element) {
+                            element.addEventListener('click', function() {
+                                const fullText = this.getAttribute('data-full-text');
+                                if (fullText && fullText !== '无法获取') {
+                                    // 尝试使用 Clipboard API
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        navigator.clipboard.writeText(fullText).then(() => {
+                                            // 显示复制成功提示
+                                            showCopySuccess();
+                                        }).catch(err => {
+                                            console.error('复制失败:', err);
+                                            // 降级方案：使用传统的复制方法
+                                            fallbackCopyTextToClipboard(fullText);
+                                        });
+                                    } else {
+                                        // 直接使用降级方案
+                                        fallbackCopyTextToClipboard(fullText);
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // 降级复制方法，兼容不支持 Clipboard API 的浏览器
+                        function fallbackCopyTextToClipboard(text) {
+                            // 创建临时文本区域
+                            const textArea = document.createElement('textarea');
+                            textArea.value = text;
+                            
+                            // 设置样式以确保文本区域不可见
+                            textArea.style.position = 'fixed';
+                            textArea.style.left = '-999999px';
+                            textArea.style.top = '-999999px';
+                            textArea.style.opacity = '0';
+                            
+                            // 添加到文档
+                            document.body.appendChild(textArea);
+                            
+                            // 选择并复制文本
+                            textArea.focus();
+                            textArea.select();
+                            
+                            try {
+                                // 执行复制命令
+                                const successful = document.execCommand('copy');
+                                if (successful) {
+                                    showCopySuccess();
+                                } else {
+                                    console.error('复制失败：execCommand 返回 false');
+                                }
+                            } catch (err) {
+                                console.error('复制失败:', err);
+                            } finally {
+                                // 清理临时元素
+                                document.body.removeChild(textArea);
+                            }
+                        }
+                        
+                        // 创建容器卡片内容
+                        const containerCardContent = `
                             <h5>${container.containerName}</h5>
                             <div class="container-info">
-                                <p><span>容器ID:</span> ${container.containerId.substring(0, 12)}...</p>
+                                <p class="copyable" title="${container.containerId}" data-full-text="${container.containerId}"><span>容器ID:</span> ${container.containerId.substring(0, 12)}...</p>
                                 <p><span>镜像:</span> ${container.image}</p>
                                 <p><span>状态:</span> ${container.isRunning ? '运行中' : '已停止'}</p>
-                                <p><span>Digest状态:</span> ${container.hasRemoteDigest ? '已获取' : '无法获取'}</p>
+                        `;
+                        
+                        // 构建Digest信息
+                        let digestContent = '';
+                        if (container.localDigest) {
+                            digestContent += `<p class="copyable" title="${container.localDigest}" data-full-text="${container.localDigest}"><span>本地Digest:</span> ${container.localDigest.substring(0, 20)}...</p>`;
+                        } else {
+                            digestContent += `<p><span>本地Digest:</span> 无法获取</p>`;
+                        }
+                        if (container.remoteDigest) {
+                            digestContent += `<p class="copyable" title="${container.remoteDigest}" data-full-text="${container.remoteDigest}"><span>最新Digest:</span> ${container.remoteDigest.substring(0, 20)}...</p>`;
+                        } else {
+                            digestContent += `<p><span>最新Digest:</span> 无法获取</p>`;
+                        }
+                        
+                        // 完成容器卡片HTML
+                        containerCard.innerHTML = containerCardContent + digestContent + `
                             </div>
                             <div class="update-info">
                                 ${updateInfoContent}
                             </div>
                         `;
+                        
+                        // 为所有可复制元素添加点击复制功能
+                        const copyableElements = containerCard.querySelectorAll('.copyable');
+                        copyableElements.forEach(addCopyFunctionality);
                         
                         updatesList.appendChild(containerCard);
                     }
@@ -102,4 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
             checkBtn.disabled = false;
         }
     });
+    
+    // 初始化SSE连接
+    initSSE();
 });

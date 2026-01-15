@@ -195,6 +195,42 @@ h1 {
     margin-top: 5px;
 }
 
+/* 复制成功提示样式 */
+.copy-success {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #27ae60;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.copy-success.show {
+    opacity: 1;
+}
+
+/* 可复制元素样式 */
+.copyable {
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.copyable:hover {
+    background-color: rgba(52, 152, 219, 0.1);
+    padding-left: 5px;
+    border-radius: 3px;
+}
+
+/* 响应式样式 */
 @media (max-width: 768px) {
     .container {
         margin: 10px;
@@ -212,5 +248,12 @@ h1 {
     
     .updates-list {
         grid-template-columns: 1fr;
+    }
+    
+    .copy-success {
+        bottom: 10px;
+        right: 10px;
+        padding: 10px 16px;
+        font-size: 12px;
     }
 }
