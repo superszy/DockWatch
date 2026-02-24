@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const basePath = window.location.pathname.replace(/\/+$/, '').replace(/\/[^\/]*\.html$/, '') || '';
+    // 获取basePath：移除末尾的斜杠和index.html
+    let basePath = window.location.pathname.replace(/\/+$/, '').replace(/\/index\.html$/, '');
+    console.log('Current pathname:', window.location.pathname);
+    console.log('Calculated basePath:', basePath);
+
     const checkBtn = document.getElementById('checkBtn');
     const status = document.getElementById('status');
     const log = document.getElementById('log');
