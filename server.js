@@ -11,6 +11,11 @@ const BASE_PATH = process.env.BASE_PATH || '';
 // 设置静态文件目录
 app.use(BASE_PATH, express.static(path.join(__dirname, 'public')));
 
+// API: 获取BASE_PATH配置
+app.get(BASE_PATH + '/api/config', (req, res) => {
+  res.json({ basePath: BASE_PATH });
+});
+
 // API: 获取所有容器并检查镜像更新
 app.get(BASE_PATH + '/api/check-updates', async (req, res) => {
   try {

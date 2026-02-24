@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const basePath = window.location.pathname.replace(/\/+$/, '').replace(/\/[^\/]*\.html$/, '') || '';
     const checkBtn = document.getElementById('checkBtn');
     const status = document.getElementById('status');
     const log = document.getElementById('log');
@@ -41,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // 调用后端API
-            const response = await fetch('./api/check-updates');
+            const response = await fetch(basePath + '/api/check-updates');
             const data = await response.json();
             
             if (!data.success) {

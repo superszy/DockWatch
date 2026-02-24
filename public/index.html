@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DockWatch - Docker容器镜像更新检查</title>
-    <link rel="stylesheet" href="./styles.css">
+    <script>
+        const basePath = window.location.pathname.replace(/\/+$/, '').replace(/\/[^\/]*\.html$/, '') || '';
+        document.write('<link rel="stylesheet" href="' + basePath + '/styles.css">');
+    </script>
 </head>
 <body>
     <div class="container">
@@ -32,6 +35,8 @@
         </div>
     </div>
 
-    <script src="./script.js"></script>
+    <script>
+        document.write('<script src="' + basePath + '/script.js"><\/script>');
+    </script>
 </body>
 </html>
