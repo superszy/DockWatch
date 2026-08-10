@@ -88,6 +88,7 @@ async function checkImageUpdate(imageName) {
     
     console.log('[' + new Date().toISOString() + ']     本地镜像创建时间: ' + localCreated.toISOString());
     console.log('[' + new Date().toISOString() + ']     本地镜像Digest: ' + (localDigest || '无'));
+    console.log('[' + new Date().toISOString() + ']     本地镜像架构: ' + (localInfo.Architecture || '未知') + '/' + (localInfo.Os || '未知'));
     
     // 解析镜像名称和标签（处理私有仓库地址，如registry.example.com:5000/repo:tag）
     console.log('[' + new Date().toISOString() + ']     原始镜像名称: ' + imageName);
@@ -145,28 +146,52 @@ async function checkImageUpdate(imageName) {
       }
       
       remoteInfo = await response.json();
-      
-      // 检查远程镜像信息中的digest
-      if (remoteInfo.digest) {
-        hasRemoteDigest = true;
-        remoteDigest = `${repo}@${remoteInfo.digest}`;
-      } else {
-        // 尝试从images数组中获取digest（Docker Hub API有时会将digest放在images数组中）
-        if (remoteInfo.images && remoteInfo.images.length > 0) {
+
+      // 优先尝试匹配本地架构的镜像 digest
+      // Docker Hub API 的 images 数组包含不同架构的镜像
+      let matchedArchDigest = null;
+
+      if (remoteInfo.images && remoteInfo.images.length > 0) {
+        // 尝试找到匹配本地架构的镜像
+        const localArch = localInfo.Architecture || 'amd64';
+        const localOs = localInfo.Os || 'linux';
+
+        console.log('[' + new Date().toISOString() + ']     查找匹配的架构: ' + localArch + '/' + localOs);
+
+        for (const image of remoteInfo.images) {
+          if (image.architecture === localArch && image.os === localOs && image.digest) {
+            matchedArchDigest = `${repo}@${image.digest}`;
+            hasRemoteDigest = true;
+            console.log('[' + new Date().toISOString() + ']     找到匹配架构的远程镜像 digest');
+            break;
+          }
+        }
+
+        // 如果没找到匹配架构，使用第一个有 digest 的镜像
+        if (!matchedArchDigest) {
           for (const image of remoteInfo.images) {
             if (image.digest) {
+              matchedArchDigest = `${repo}@${image.digest}`;
               hasRemoteDigest = true;
-              remoteDigest = `${repo}@${image.digest}`;
+              console.log('[' + new Date().toISOString() + ']     未找到匹配架构，使用第一个可用 digest (架构: ' + (image.architecture || '未知') + ')');
               break;
             }
           }
         }
-        
-        if (!hasRemoteDigest) {
-          // 无法获取digest，使用null
-          remoteDigest = null;
-          console.log('[' + new Date().toISOString() + ']     警告：无法从远程镜像信息中获取Digest');
-        }
+      }
+
+      // 如果 images 数组中找到了 digest，使用它；否则尝试使用顶层的 digest
+      if (matchedArchDigest) {
+        remoteDigest = matchedArchDigest;
+      } else if (remoteInfo.digest) {
+        hasRemoteDigest = true;
+        remoteDigest = `${repo}@${remoteInfo.digest}`;
+        console.log('[' + new Date().toISOString() + ']     使用顶层 digest (可能是 manifest list)');
+      } else {
+        // 无法获取digest，使用null
+        remoteDigest = null;
+        hasRemoteDigest = false;
+        console.log('[' + new Date().toISOString() + ']     警告：无法从远程镜像信息中获取Digest');
       }
       
       // 处理镜像更新时间
