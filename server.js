@@ -191,21 +191,35 @@ async function checkImageUpdate(imageName) {
     }
     
     // 改进的比较逻辑：
-    // 1. 如果本地和远程都有digest，直接比较
+    // 1. 如果本地和远程都有digest，直接比较 SHA256 哈希值
     // 2. 如果只有本地有digest，远程没有，无法确定，标记为无需更新
     // 3. 如果本地没有digest，比较镜像创建时间
     let hasUpdate = false;
     let reason = '';
-    
+
     if (localDigest && hasRemoteDigest) {
-      // 本地和远程都有digest，直接比较
-      hasUpdate = localDigest !== remoteDigest;
-      if (hasUpdate) {
-        reason = 'digest不匹配';
-        console.log('[' + new Date().toISOString() + ']     Digest比较结果: 不匹配 (本地: ' + localDigest + ', 远程: ' + remoteDigest + ')');
+      // 本地和远程都有digest，提取 SHA256 哈希值进行比较
+      // 本地格式可能是: library/nginx@sha256:xxx 或 docker.io/library/nginx@sha256:xxx
+      // 远程格式: library/nginx@sha256:xxx
+      const localHash = localDigest.includes('@sha256:') ? localDigest.split('@sha256:')[1] : '';
+      const remoteHash = remoteDigest.includes('@sha256:') ? remoteDigest.split('@sha256:')[1] : '';
+
+      if (localHash && remoteHash) {
+        hasUpdate = localHash !== remoteHash;
+        if (hasUpdate) {
+          reason = 'digest不匹配';
+          console.log('[' + new Date().toISOString() + ']     Digest比较结果: 不匹配');
+          console.log('[' + new Date().toISOString() + ']       本地SHA256: ' + localHash.substring(0, 16) + '...');
+          console.log('[' + new Date().toISOString() + ']       远程SHA256: ' + remoteHash.substring(0, 16) + '...');
+        } else {
+          reason = 'digest匹配';
+          console.log('[' + new Date().toISOString() + ']     Digest比较结果: 匹配 (SHA256: ' + localHash.substring(0, 16) + '...)');
+        }
       } else {
-        reason = 'digest匹配';
-        console.log('[' + new Date().toISOString() + ']     Digest比较结果: 匹配');
+        // 无法提取有效的 SHA256 哈希值，回退到字符串比较
+        hasUpdate = localDigest !== remoteDigest;
+        reason = hasUpdate ? 'digest格式比较不匹配' : 'digest格式比较匹配';
+        console.log('[' + new Date().toISOString() + ']     Digest比较结果(回退): ' + reason);
       }
     } else if (localDigest && !hasRemoteDigest) {
       // 本地有digest，远程没有，无法确定，假设无需更新
